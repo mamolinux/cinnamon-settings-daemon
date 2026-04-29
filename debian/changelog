@@ -1,3 +1,10 @@
+cinnamon-settings-daemon (6.6.4) zena; urgency=medium
+
+  [ Michael Webster ]
+  * csd-power-manager.c: Don't turn monitors off before suspend/hibernate. (#442)
+
+ -- Clement Lefebvre <root@linuxmint.com>  Wed, 29 Apr 2026 13:12:31 +0100
+
 cinnamon-settings-daemon (6.6.3) zena; urgency=medium
 
   [ Michael Webster ]
