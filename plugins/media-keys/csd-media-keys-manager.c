@@ -1695,22 +1695,22 @@ do_action (CsdMediaKeysManager *manager,
                 do_url_action (manager, "ghelp", timestamp);
                 break;
         case C_DESKTOP_MEDIA_KEY_SCREENSHOT:
-                execute (manager, "gnome-screenshot", FALSE);
+                execute (manager, "cinnamon-screenshot", FALSE);
                 break;
         case C_DESKTOP_MEDIA_KEY_WINDOW_SCREENSHOT:
-                execute (manager, "gnome-screenshot --window", FALSE);
+                execute (manager, "cinnamon-screenshot --window", FALSE);
                 break;
         case C_DESKTOP_MEDIA_KEY_AREA_SCREENSHOT:
-                execute (manager, "gnome-screenshot --area", FALSE);
+                execute (manager, "cinnamon-screenshot --area", FALSE);
                 break;
         case C_DESKTOP_MEDIA_KEY_SCREENSHOT_CLIP:
-                execute (manager, "gnome-screenshot --clipboard", FALSE);
+                execute (manager, "cinnamon-screenshot --clipboard", FALSE);
                 break;
         case C_DESKTOP_MEDIA_KEY_WINDOW_SCREENSHOT_CLIP:
-                execute (manager, "gnome-screenshot --window --clipboard", FALSE);
+                execute (manager, "cinnamon-screenshot --window --clipboard", FALSE);
                 break;
         case C_DESKTOP_MEDIA_KEY_AREA_SCREENSHOT_CLIP:
-                execute (manager, "gnome-screenshot --area --clipboard", FALSE);
+                execute (manager, "cinnamon-screenshot --area --clipboard", FALSE);
                 break;
         case C_DESKTOP_MEDIA_KEY_TERMINAL:
                 do_terminal_action (manager);
