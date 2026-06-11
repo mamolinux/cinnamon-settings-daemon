@@ -54,27 +54,12 @@
 #define KEY_BELL_MODE      "bell-mode"
 #define KEY_BELL_CUSTOM_FILE "bell-custom-file"
 
-#define CINNAMON_DESKTOP_INTERFACE_DIR "org.cinnamon.desktop.interface"
-
-#define CINNAMON_DESKTOP_INPUT_SOURCES_DIR "org.gnome.desktop.input-sources"
-
-#define KEY_INPUT_SOURCES        "sources"
-#define KEY_KEYBOARD_OPTIONS     "xkb-options"
-
-#define INPUT_SOURCE_TYPE_XKB  "xkb"
-#define INPUT_SOURCE_TYPE_IBUS "ibus"
-
-#define DEFAULT_LAYOUT "us"
-
 struct _CsdKeyboardManager
 {
         GObject    parent;
 
         guint      start_idle_id;
         GSettings *settings;
-        GSettings *input_sources_settings;
-        GDBusProxy *localed;
-        GCancellable *cancellable;
 };
 
 static void     csd_keyboard_manager_class_init  (CsdKeyboardManagerClass *klass);
@@ -84,26 +69,6 @@ static void     csd_keyboard_manager_finalize    (GObject                 *objec
 G_DEFINE_TYPE (CsdKeyboardManager, csd_keyboard_manager, G_TYPE_OBJECT)
 
 static gpointer manager_object = NULL;
-
-static void
-init_builder_with_sources (GVariantBuilder *builder,
-                           GSettings       *settings)
-{
-        const gchar *type;
-        const gchar *id;
-        GVariantIter iter;
-        GVariant *sources;
-
-        sources = g_settings_get_value (settings, KEY_INPUT_SOURCES);
-
-        g_variant_builder_init (builder, G_VARIANT_TYPE ("a(ss)"));
-
-        g_variant_iter_init (&iter, sources);
-        while (g_variant_iter_next (&iter, "(&s&s)", &type, &id))
-                g_variant_builder_add (builder, "(ss)", type, id);
-
-        g_variant_unref (sources);
-}
 
 static void
 apply_bell (CsdKeyboardManager *manager)
@@ -177,128 +142,6 @@ settings_changed (GSettings          *settings,
 
 }
 
-static void
-get_sources_from_xkb_config (CsdKeyboardManager *manager)
-{
-        GVariantBuilder builder;
-        GVariant *v;
-        gint i, n;
-        gchar **layouts = NULL;
-        gchar **variants = NULL;
-
-        v = g_dbus_proxy_get_cached_property (manager->localed, "X11Layout");
-        if (v) {
-                const gchar *s = g_variant_get_string (v, NULL);
-                if (*s)
-                        layouts = g_strsplit (s, ",", -1);
-                g_variant_unref (v);
-        }
-
-        init_builder_with_sources (&builder, manager->input_sources_settings);
-
-        if (!layouts) {
-                g_variant_builder_add (&builder, "(ss)", INPUT_SOURCE_TYPE_XKB, DEFAULT_LAYOUT);
-                goto out;
-    }
-
-        v = g_dbus_proxy_get_cached_property (manager->localed, "X11Variant");
-        if (v) {
-                const gchar *s = g_variant_get_string (v, NULL);
-                if (*s)
-                        variants = g_strsplit (s, ",", -1);
-                g_variant_unref (v);
-        }
-
-        if (variants && variants[0])
-                n = MIN (g_strv_length (layouts), g_strv_length (variants));
-        else
-                n = g_strv_length (layouts);
-
-        for (i = 0; i < n && layouts[i][0]; ++i) {
-                gchar *id;
-
-                if (variants && variants[i] && variants[i][0])
-                        id = g_strdup_printf ("%s+%s", layouts[i], variants[i]);
-                else
-                        id = g_strdup (layouts[i]);
-
-                g_variant_builder_add (&builder, "(ss)", INPUT_SOURCE_TYPE_XKB, id);
-                g_free (id);
-        }
-
-out:
-        g_settings_set_value (manager->input_sources_settings, KEY_INPUT_SOURCES, g_variant_builder_end (&builder));
-
-        g_strfreev (layouts);
-        g_strfreev (variants);
-}
-
-static void
-get_options_from_xkb_config (CsdKeyboardManager *manager)
-{
-        GVariant *v;
-        gchar **options = NULL;
-
-        v = g_dbus_proxy_get_cached_property (manager->localed, "X11Options");
-        if (v) {
-                const gchar *s = g_variant_get_string (v, NULL);
-                if (*s)
-                        options = g_strsplit (s, ",", -1);
-                g_variant_unref (v);
-        }
-
-        if (!options)
-                return;
-
-        g_settings_set_strv (manager->input_sources_settings, KEY_KEYBOARD_OPTIONS, (const gchar * const*) options);
-
-        g_strfreev (options);
-}
-
-static void
-maybe_create_initial_settings (CsdKeyboardManager *manager)
-{
-        GSettings *settings;
-        GVariant *sources;
-        gchar **options;
-
-        settings = manager->input_sources_settings;
-
-        /* if we still don't have anything do some educated guesses */
-        sources = g_settings_get_value (settings, KEY_INPUT_SOURCES);
-        if (g_variant_n_children (sources) < 1)
-                get_sources_from_xkb_config (manager);
-        g_variant_unref (sources);
-
-        options = g_settings_get_strv (settings, KEY_KEYBOARD_OPTIONS);
-        if (g_strv_length (options) < 1)
-                get_options_from_xkb_config (manager);
-        g_strfreev (options);
-}
-
-static void
-localed_proxy_ready (GObject      *source,
-                     GAsyncResult *res,
-                     gpointer      data)
-{
-        CsdKeyboardManager *manager = data;
-        GDBusProxy *proxy;
-        GError *error = NULL;
-
-        proxy = g_dbus_proxy_new_finish (res, &error);
-        if (!proxy) {
-                if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-                        g_error_free (error);
-                        return;
-                }
-                g_warning ("Failed to contact localed: %s", error->message);
-                g_error_free (error);
-        }
-
-        manager->localed = proxy;
-        maybe_create_initial_settings (manager);
-}
-
 static gboolean
 start_keyboard_idle_cb (CsdKeyboardManager *manager)
 {
@@ -307,20 +150,6 @@ start_keyboard_idle_cb (CsdKeyboardManager *manager)
         g_debug ("Starting keyboard manager");
 
         manager->settings = g_settings_new (CSD_KEYBOARD_DIR);
-
-        manager->input_sources_settings = g_settings_new (CINNAMON_DESKTOP_INPUT_SOURCES_DIR);
-
-        manager->cancellable = g_cancellable_new ();
-
-        g_dbus_proxy_new_for_bus (G_BUS_TYPE_SYSTEM,
-                                  G_DBUS_PROXY_FLAGS_NONE,
-                                  NULL,
-                                  "org.freedesktop.locale1",
-                                  "/org/freedesktop/locale1",
-                                  "org.freedesktop.locale1",
-                                  manager->cancellable,
-                                  localed_proxy_ready,
-                                  manager);
 
         if (!cinnamon_settings_session_is_wayland ()) {
                 /* apply current settings before we install the callback */
@@ -357,12 +186,7 @@ csd_keyboard_manager_stop (CsdKeyboardManager *manager)
 {
         g_debug ("Stopping keyboard manager");
 
-        g_cancellable_cancel (manager->cancellable);
-        g_clear_object (&manager->cancellable);
-
         g_clear_object (&manager->settings);
-        g_clear_object (&manager->input_sources_settings);
-        g_clear_object (&manager->localed);
 }
 
 static void
