@@ -1172,10 +1172,15 @@ update_gtk_im_module (CinnamonSettingsXSettingsManager *manager)
 
         setting = g_settings_get_string (manager->priv->interface_settings,
                                          GTK_IM_MODULE_KEY);
-        if (setting && *setting)
+        if (setting && *setting) {
                 module = setting;
-        else
-                module = GTK_IM_MODULE_IBUS;
+        } else {
+                /* No explicit gsetting: follow the IM module im-config exported
+                 * into the session (GTK_IM_MODULE) so we don't broadcast "ibus"
+                 * onto e.g. an fcitx session. "ibus" remains the last resort. */
+                const gchar *env = g_getenv ("GTK_IM_MODULE");
+                module = (env && *env) ? env : GTK_IM_MODULE_IBUS;
+        }
 
         for (i = 0; manager->priv->managers [i]; i++) {
             xsettings_manager_set_string (manager->priv->managers[i], "Gtk/IMModule", module);
