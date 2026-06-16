@@ -1,3 +1,23 @@
+cinnamon-settings-daemon (6.7.1) alfa; urgency=medium
+
+  [ Michael Webster ]
+  * debian: Add automount desktop file for removal.
+
+  [ Swift42 ]
+  * Update csd-disk-space-helper.c (#449)
+
+  [ Matt Turnbull ]
+  * Don't install the static csd library. (#450)
+
+  [ Michael Webster ]
+  * csd-media-keys-manager.c: Replace gnome- with cinnamon-screenshot.
+  * csd-xsettings-manager.c: Don't override GTK_IM_MODULE if it's already set (likely by im-config in Mint).
+
+  [ Gary Renes ]
+  * Fix volume up not working on FreeBSD (#460)
+
+ -- Clement Lefebvre <root@linuxmint.com>  Tue, 16 Jun 2026 18:24:29 +0200
+
 cinnamon-settings-daemon (6.7.0) unstable; urgency=medium
 
   [ Oliver Kästner ]
