@@ -1,3 +1,10 @@
+cinnamon-settings-daemon (6.7.2) alfa; urgency=medium
+
+  [ Michael Webster ]
+  * csd-keyboard-manager.c: Remove some dead keyboard layout code.
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu, 02 Jul 2026 13:20:25 +0200
+
 cinnamon-settings-daemon (6.7.1) alfa; urgency=medium
 
   [ Michael Webster ]
