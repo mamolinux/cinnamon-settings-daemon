@@ -1177,9 +1177,21 @@ update_gtk_im_module (CinnamonSettingsXSettingsManager *manager)
         } else {
                 /* No explicit gsetting: follow the IM module im-config exported
                  * into the session (GTK_IM_MODULE) so we don't broadcast "ibus"
-                 * onto e.g. an fcitx session. "ibus" remains the last resort. */
+                 * onto e.g. an fcitx session. On Wayland the session keeps
+                 * GTK_IM_MODULE unset so native GTK apps use text-input-v3;
+                 * there XMODIFIERS (@im=fcitx / @im=ibus) names the module the
+                 * XWayland GTK apps should use - the right audience, since
+                 * XSettings only reach X clients. "ibus" remains the last
+                 * resort. */
                 const gchar *env = g_getenv ("GTK_IM_MODULE");
-                module = (env && *env) ? env : GTK_IM_MODULE_IBUS;
+                const gchar *xmod = g_getenv ("XMODIFIERS");
+
+                if (env && *env)
+                        module = env;
+                else if (xmod && g_str_has_prefix (xmod, "@im="))
+                        module = xmod + strlen ("@im=");
+                else
+                        module = GTK_IM_MODULE_IBUS;
         }
 
         for (i = 0; manager->priv->managers [i]; i++) {
